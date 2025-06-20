@@ -3,7 +3,7 @@ import pandas as pd
 
 schedule = statsapi.schedule(start_date="03/27/2025",
                         end_date="06/18/2025",
-                        team="111",
+                        team="",
                         opponent="")
 
 
