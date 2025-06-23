@@ -1,6 +1,9 @@
 import statsapi
 import pandas as pd
+import rosterPrep
+import rosterScorer
 
+# grab games being looked at
 schedule = statsapi.schedule(start_date="03/27/2025",
                         end_date="03/27/2025",
                         team="147",
@@ -10,11 +13,28 @@ gameList = []
 gameScores = []
 
 for game in schedule:
-    homePitcher = statsapi.lookup_player(game["home_probable_pitcher"])
+    # grab starting pitchers for weighted scoring
+    game_date = game["game_date"]
+    homePitcher = statsapi.lookup_player(game["home_probable_pitcher"], season=2025)
     homePitcher_ID = homePitcher[0]["id"]
 
-    awayPitcher = statsapi.lookup_player(game["away_probable_pitcher"])
+    awayPitcher = statsapi.lookup_player(game["away_probable_pitcher"], season=2025)
     awayPitcher_ID = awayPitcher[0]["id"]
+
+    homeTeamID = game["home_id"]
+    awayTeamID = game["away_id"]
+
+    # Grab team rosters for scoring
+    homeRosterList = statsapi.roster(homeTeamID,date=game_date)
+    homePositionPlayers, homePitchers = rosterPrep.rosterPrep(homeRosterList)
+
+    homeScoreRosterDict = rosterScorer.scoreoffensiveRoster(homePositionPlayers)
+    homeScorePitchDict = rosterScorer.scorePitchingRoster(homePitchers)
+
+    awayRosterList = statsapi.roster(awayTeamID, date=game_date)
+    awayPositionPlayers, awayPitchers = rosterPrep.rosterPrep(awayRosterList)
+
+    awayScoreRosterDict = rosterScorer.scoreoffensiveRoster(awayPositionPlayers)
 
     gamescore = {"Home Team": game["home_name"],"Home ID": game["home_id"],
                  "Home Pitcher": game["home_probable_pitcher"], "Home Pitcher ID": homePitcher_ID, "Home Score": game["home_score"],
@@ -30,4 +50,9 @@ df = pd.DataFrame(gameScores)
 
 df["Home Team Win"] = df["Home Team"] == df["Winning Team"]
 
-print(df)
+# Testing prints
+print(schedule)
+print(homePositionPlayers)
+print(homePitchers)
+print(homeScoreRosterDict)
+print(homeScorePitchDict)
