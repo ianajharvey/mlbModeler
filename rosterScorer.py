@@ -1,25 +1,25 @@
 import statsapi
 import pandas as pd
 
-def scoreoffensiveRoster(positionRoster):
+def scoreoffensiveRoster(positionRoster, type):
     score_dict_list = []
     for player in positionRoster:
         playerDict = {}
-        playerCareerStatsRaw = statsapi.player_stat_data(player["ID"],"hitting","career")
-        playerCareerStats = playerCareerStatsRaw["stats"][0]["stats"]
+        playerStatsRaw = statsapi.player_stat_data(player["ID"],"hitting",type)
+        playerStats = playerStatsRaw["stats"][0]["stats"]
 
-        playerDict["Career_hits"] = playerCareerStats["hits"]
-        playerDict["Career_doubles"] = playerCareerStats["doubles"]
-        playerDict["Career_triples"] = playerCareerStats["triples"]
-        playerDict["Career_homeruns"] = playerCareerStats["homeRuns"]
-        playerDict["Career_walks"] = playerCareerStats["baseOnBalls"]
-        playerDict["Career_hbp"] = playerCareerStats["hitByPitch"]
-        playerDict["Career_stolenBases"] = playerCareerStats["stolenBases"]
-        playerDict["Career_caughtStealing"] = playerCareerStats["caughtStealing"]
-        playerDict["Career_atBats"] = playerCareerStats["atBats"]
-        playerDict["Career_plateAppearances"] = playerCareerStats["plateAppearances"]
-        playerDict["Career_totalBases"] = playerCareerStats["totalBases"]
-        playerDict["Career_rbi"] = playerCareerStats["rbi"]
+        playerDict["hits"] = playerStats["hits"]
+        playerDict["doubles"] = playerStats["doubles"]
+        playerDict["triples"] = playerStats["triples"]
+        playerDict["homeruns"] = playerStats["homeRuns"]
+        playerDict["walks"] = playerStats["baseOnBalls"]
+        playerDict["hbp"] = playerStats["hitByPitch"]
+        playerDict["stolenBases"] = playerStats["stolenBases"]
+        playerDict["caughtStealing"] = playerStats["caughtStealing"]
+        playerDict["atBats"] = playerStats["atBats"]
+        playerDict["plateAppearances"] = playerStats["plateAppearances"]
+        playerDict["totalBases"] = playerStats["totalBases"]
+        playerDict["rbi"] = playerStats["rbi"]
 
         score_dict_list.append(playerDict)
 
@@ -28,55 +28,110 @@ def scoreoffensiveRoster(positionRoster):
     team_totals = off_df.sum(numeric_only=True)
     team_stat_dict = team_totals.to_dict()
 
-    team_average = team_stat_dict["Career_hits"] / team_stat_dict["Career_atBats"]
-    team_obp = (team_stat_dict["Career_hits"] + team_stat_dict["Career_walks"] + team_stat_dict["Career_hbp"]) / team_stat_dict["Career_plateAppearances"]
-    team_slugging = team_stat_dict["Career_totalBases"] / team_stat_dict["Career_atBats"]
+    team_average = team_stat_dict["hits"] / team_stat_dict["atBats"]
+    team_obp = (team_stat_dict["hits"] + team_stat_dict["walks"] + team_stat_dict["hbp"]) / team_stat_dict["plateAppearances"]
+    team_slugging = team_stat_dict["totalBases"] / team_stat_dict["atBats"]
     team_ops = team_obp + team_slugging
-    team_EtotalBases = (team_stat_dict["Career_totalBases"] + team_stat_dict["Career_walks"] + team_stat_dict["Career_hbp"] + team_stat_dict["Career_stolenBases"] - team_stat_dict["Career_caughtStealing"])
-    team_Eslugging = team_EtotalBases / team_stat_dict["Career_plateAppearances"]
+    team_EtotalBases = (team_stat_dict["totalBases"] + team_stat_dict["walks"] + team_stat_dict["hbp"] + team_stat_dict["stolenBases"] - team_stat_dict["caughtStealing"])
+    team_Eslugging = team_EtotalBases / team_stat_dict["plateAppearances"]
     team_EOPS = team_Eslugging + team_obp
-    team_rbipa = team_stat_dict["Career_rbi"] / team_stat_dict["Career_plateAppearances"]
-    team_walkRate = team_stat_dict["Career_walks"] / team_stat_dict["Career_plateAppearances"]
+    team_rbipa = team_stat_dict["rbi"] / team_stat_dict["plateAppearances"]
+    team_walkRate = team_stat_dict["walks"] / team_stat_dict["plateAppearances"]
     team_iso = team_slugging - team_average
-    team_sbEfficiency = team_stat_dict["Career_stolenBases"] / (team_stat_dict["Career_stolenBases"] + team_stat_dict["Career_caughtStealing"])
-    team_Eadvancement = team_EtotalBases / team_stat_dict["Career_plateAppearances"]
+    team_sbEfficiency = team_stat_dict["stolenBases"] / (team_stat_dict["stolenBases"] + team_stat_dict["caughtStealing"])
+    team_Eadvancement = team_EtotalBases / team_stat_dict["plateAppearances"]
 
     off_dict = {"average": team_average, "obp": team_obp, "slugging": team_slugging, "ops": team_ops,
                 "e_totalBases": team_EtotalBases, "e_slugging": team_Eslugging, "e_ops": team_EOPS,
                 "rbipa": team_rbipa, "walkRate": team_walkRate, "iso": team_iso, "sb_efficiency":team_sbEfficiency,
-                "E+advancement": team_Eadvancement}
+                "E_advancement": team_Eadvancement}
 
 
     return off_dict
 
 
-def scorePitchingRoster(pitchingRoster):
+def scorePitchingRoster(pitchingRoster, type):
     score_dict_list = []
     for player in pitchingRoster:
         playerDict = {}
-        playerCareerStatsRaw = statsapi.player_stat_data(player["ID"],"pitching","career")
-        playerCareerStats = playerCareerStatsRaw["stats"][0]["stats"]
+        playerStatsRaw = statsapi.player_stat_data(player["ID"],"pitching",type)
+        playerStats = playerStatsRaw["stats"][0]["stats"]
 
-        playerDict["Career_inningsPitched"] = playerCareerStats["inningsPitched"]
-        playerDict["Career_battersFaced"] = playerCareerStats["battersFaced"]
-        playerDict["Career_outs"] = playerCareerStats["outs"]
-        playerDict["Career_strikeouts"] = playerCareerStats["strikeOuts"]
-        playerDict["Career_runs"] = playerCareerStats["runs"]
-        playerDict["Career_earnedRuns"] = playerCareerStats["earnedRuns"]
-        playerDict["Career_hits"] = playerCareerStats["hits"]
-        playerDict["Career_doubles"] = playerCareerStats["doubles"]
-        playerDict["Career_triples"] = playerCareerStats["triples"]
-        playerDict["Career_homeruns"] = playerCareerStats["homeRuns"]
-        playerDict["Career_walks"] = playerCareerStats["baseOnBalls"]
-        playerDict["Career_hbp"] = playerCareerStats["hitByPitch"]
-        playerDict["Career_stolenBases"] = playerCareerStats["stolenBases"]
-        playerDict["Career_caughtStealing"] = playerCareerStats["caughtStealing"]
-        playerDict["Career_atBats"] = playerCareerStats["atBats"]
-        playerDict["Career_numberOfPitches"] = playerCareerStats["numberOfPitches"]
-        playerDict["Career_strikes"] = playerCareerStats["strikes"]
-        playerDict["Career_totalBases"] = playerCareerStats["totalBases"]
+        playerDict["inningsPitched"] = convert_innings_pitched(playerStats["inningsPitched"])
+        playerDict["battersFaced"] = playerStats["battersFaced"]
+        playerDict["outs"] = playerStats["outs"]
+        playerDict["strikeouts"] = playerStats["strikeOuts"]
+        playerDict["runs"] = playerStats["runs"]
+        playerDict["earnedRuns"] = playerStats["earnedRuns"]
+        playerDict["hits"] = playerStats["hits"]
+        playerDict["doubles"] = playerStats["doubles"]
+        playerDict["triples"] = playerStats["triples"]
+        playerDict["homeruns"] = playerStats["homeRuns"]
+        playerDict["walks"] = playerStats["baseOnBalls"]
+        playerDict["hbp"] = playerStats["hitByPitch"]
+        playerDict["stolenBases"] = playerStats["stolenBases"]
+        playerDict["caughtStealing"] = playerStats["caughtStealing"]
+        playerDict["atBats"] = playerStats["atBats"]
+        playerDict["numberOfPitches"] = playerStats["numberOfPitches"]
+        playerDict["strikes"] = playerStats["strikes"]
+        playerDict["totalBases"] = playerStats["totalBases"]
+        playerDict["gamesPitched"] = playerStats["gamesPitched"]
+        playerDict["gamesStarted"] = playerStats["gamesStarted"]
+        playerDict["groundOuts"] = playerStats["groundOuts"]
+        playerDict["airOuts"] = playerStats["airOuts"]
 
 
         score_dict_list.append(playerDict)
 
-    return score_dict_list
+    pitch_df = pd.DataFrame(score_dict_list)
+
+    team_totals = pitch_df.sum(numeric_only=True)
+    team_stat_dict = team_totals.to_dict()
+
+    team_whip = (team_stat_dict["hits"] + team_stat_dict["walks"] + team_stat_dict["hbp"]) / team_stat_dict["inningsPitched"]
+    team_k_per_inning = team_stat_dict["strikeouts"] / team_stat_dict["inningsPitched"]
+    team_pressure_differential = team_whip - team_k_per_inning
+    team_k_9 = team_k_per_inning * 9
+    team_allowed_average = team_stat_dict["hits"] / team_stat_dict["atBats"]
+    team_allowed_OBP = (team_stat_dict["hits"] + team_stat_dict["walks"] + team_stat_dict["hbp"]) / team_stat_dict["battersFaced"]
+    team_allowed_slugging = team_stat_dict["totalBases"] / team_stat_dict["atBats"]
+    team_allowed_OPS = team_allowed_OBP + team_allowed_slugging
+    team_allowed_E_Slugging = (team_stat_dict["totalBases"] + team_stat_dict["walks"]+ team_stat_dict["hbp"] + team_stat_dict["stolenBases"] - team_stat_dict["caughtStealing"]) / team_stat_dict["battersFaced"]
+    team_allowed_EOPS = team_allowed_OBP + team_allowed_E_Slugging
+    team_ERA = 9 * team_stat_dict["earnedRuns"] / team_stat_dict["inningsPitched"]
+    team_FIP = (((13 * team_stat_dict["homeruns"]) + (3 * (team_stat_dict["walks"] + team_stat_dict["hbp"])) - (2 * team_stat_dict["strikeouts"])) / team_stat_dict["inningsPitched"]) + 3.2
+    team_hitters_faced_9 = (team_stat_dict["battersFaced"] / team_stat_dict["inningsPitched"]) * 9
+    team_k_bb = team_stat_dict["strikeouts"] / team_stat_dict["walks"]
+    team_bb_9 = (team_stat_dict["walks"] / team_stat_dict["inningsPitched"]) * 9
+    team_hr_9 = (team_stat_dict["homeruns"] / team_stat_dict["inningsPitched"]) * 9
+    team_allowed_iso = team_allowed_slugging - team_allowed_average
+    team_contact_outs = team_stat_dict["outs"] - team_stat_dict["strikeouts"]
+    team_pitches_per_batter = team_stat_dict["numberOfPitches"] / team_stat_dict["battersFaced"]
+    team_dpi = (team_stat_dict["battersFaced"] - team_stat_dict["strikeouts"] - team_stat_dict["walks"] - team_stat_dict["hbp"]) / team_stat_dict["battersFaced"]
+    team_reb = team_stat_dict["runs"] / team_stat_dict["battersFaced"]
+    team_ground_air = team_stat_dict["groundOuts"] / team_stat_dict["airOuts"]
+    team_innings_game = team_stat_dict["inningsPitched"] / team_stat_dict["gamesPitched"]
+
+    pitch_dict = {"ERA": team_ERA, "FIP":team_FIP, "WHIP": team_whip, "PDiff": team_pressure_differential, "K9": team_k_9,
+                  "BB9": team_bb_9, "KBB": team_k_bb, "AverageAgainst": team_allowed_average, "OBPAgainst": team_allowed_OBP, "SluggingAgainst": team_allowed_slugging,
+                  "OPSAgainst": team_allowed_OPS, "ESluggingAgainst": team_allowed_E_Slugging, "EOPSAgainst": team_allowed_EOPS,
+                  "Hittersper9":team_hitters_faced_9, "HRs9": team_hr_9, "ISOAgainst": team_allowed_iso,
+                  "ContactOuts": team_contact_outs, "pitchesPerBatter": team_pitches_per_batter, "DPI": team_dpi, "REB": team_reb,
+                  "GroundtoAir": team_ground_air, "inningsperGame": team_innings_game}
+
+    return pitch_dict
+
+def convert_innings_pitched(innings_str):
+    try:
+        if '.' in innings_str:
+            parts = innings_str.split('.')
+            whole_innings = int(parts[0])
+            outs = int(parts[1])
+            if outs not in [0, 1, 2]:
+                raise ValueError("Invalid number of outs in inning string")
+            return whole_innings + (outs / 3)
+        else:
+            return float(innings_str)
+    except (ValueError, TypeError):
+        return None  # or raise an error/log it
+

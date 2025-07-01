@@ -15,11 +15,20 @@ gameScores = []
 for game in schedule:
     # grab starting pitchers for weighted scoring
     game_date = game["game_date"]
+
+    #Grab Home Starting Pitcher Stats
     homePitcher = statsapi.lookup_player(game["home_probable_pitcher"], season=2025)
     homePitcher_ID = homePitcher[0]["id"]
+    homePitcherData = []
+    homePitcherData.append({"Number": homePitcher[0]["primaryNumber"], "Position": "P", "Name": homePitcher[0]["fullName"], "ID": homePitcher_ID})
+    homePitcher_dict = rosterScorer.scorePitchingRoster(homePitcherData, "career")
 
+    # Grab Away Starting Pitcher Stats
     awayPitcher = statsapi.lookup_player(game["away_probable_pitcher"], season=2025)
     awayPitcher_ID = awayPitcher[0]["id"]
+    awayPitcherData = []
+    awayPitcherData.append({"Number": awayPitcher[0]["primaryNumber"], "Position": "P", "Name": awayPitcher[0]["fullName"], "ID": awayPitcher_ID})
+    awayPitcher_dict = rosterScorer.scorePitchingRoster(awayPitcherData, "career")
 
     homeTeamID = game["home_id"]
     awayTeamID = game["away_id"]
@@ -28,13 +37,17 @@ for game in schedule:
     homeRosterList = statsapi.roster(homeTeamID,date=game_date)
     homePositionPlayers, homePitchers = rosterPrep.rosterPrep(homeRosterList)
 
-    homeScoreRosterDict = rosterScorer.scoreoffensiveRoster(homePositionPlayers)
-    homeScorePitchDict = rosterScorer.scorePitchingRoster(homePitchers)
+    # Grab Home batting and pitching data
+    homeScoreRosterDict = rosterScorer.scoreoffensiveRoster(homePositionPlayers, "career")
+    homeScorePitchDict = rosterScorer.scorePitchingRoster(homePitchers, "career")
 
+    # Grab team rosters for scoring
     awayRosterList = statsapi.roster(awayTeamID, date=game_date)
     awayPositionPlayers, awayPitchers = rosterPrep.rosterPrep(awayRosterList)
 
-    awayScoreRosterDict = rosterScorer.scoreoffensiveRoster(awayPositionPlayers)
+    # Grab away batting and pitching data
+    awayScoreRosterDict = rosterScorer.scoreoffensiveRoster(awayPositionPlayers, "career")
+    awayScorePitchDict = rosterScorer.scorePitchingRoster(awayPitchers, "career")
 
     gamescore = {"Home Team": game["home_name"],"Home ID": game["home_id"],
                  "Home Pitcher": game["home_probable_pitcher"], "Home Pitcher ID": homePitcher_ID, "Home Score": game["home_score"],
@@ -52,7 +65,9 @@ df["Home Team Win"] = df["Home Team"] == df["Winning Team"]
 
 # Testing prints
 print(schedule)
-print(homePositionPlayers)
-print(homePitchers)
+print(homePitcher_dict)
+print(awayPitcher_dict)
 print(homeScoreRosterDict)
 print(homeScorePitchDict)
+print(awayScoreRosterDict)
+print(awayScorePitchDict)
