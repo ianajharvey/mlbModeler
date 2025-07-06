@@ -38,7 +38,7 @@ for schedule_date in schedule_dates:
         game_data["home_team_pitcher_name"] = home_team_info["probablePitcher"]["fullName"]
         game_data["home_team_pitcher_id"] = home_team_info["probablePitcher"]["id"]
 
-        home_team_stats = stats_pull.teamTotalStats(home_team_info["team"]["id"], date)
+        home_team_pitching, home_team_batting = stats_pull.teamTotalStats(home_team_info["team"]["id"], date)
 
 
         away_team_info = team_info["away"]
@@ -53,7 +53,8 @@ for schedule_date in schedule_dates:
         games_list.append(game_data)
 
 
-print(games_list)
+print(home_team_batting)
+print(home_team_pitching)
 
 
 
