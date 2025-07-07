@@ -1,6 +1,29 @@
 import requests
 from datetime import datetime, timedelta
-import pandas
+import pandas as pd
+
+
+def convert_ip(ip):
+    """Convert innings pitched string (e.g., '6.1') to decimal (e.g., 6.333...)"""
+    if isinstance(ip, str) and '.' in ip:
+        whole, fraction = ip.split('.')
+        return int(whole) + int(fraction) / 3
+    try:
+        return float(ip)
+    except:
+        return 0.0  # Fallback if value is missing or badly formatted
+
+
+def safe_division(numerator, denominator):
+
+    try:
+        division_value = numerator / denominator
+        return division_value
+
+    except ZeroDivisionError:
+        return None
+
+
 
 
 def getDateRange(end_date):
@@ -64,7 +87,10 @@ def teamTotalStats(team_id, date):
             print(error_log_entry)
             continue
 
-    return pitching_list, batting_list
+    processed_pitching_dict = process_pitching_stats(pitching_list)
+    processed_batting_dict = process_batting_stats(batting_list)
+
+    return processed_pitching_dict, processed_batting_dict
 
 
 def process_pitching_stats(pitching_stats):
@@ -73,15 +99,55 @@ def process_pitching_stats(pitching_stats):
     allowed_keys = [
         "flyOuts","groundOuts","airOuts","runs","doubles","triples","homeRuns","strikeOuts","baseOnBalls",
         "hits","hitByPitch","atBats","caughtStealing","stolenBases","groundIntoDoublePlay", "numberOfPitches",
-        "inningsPitched","earnedRuns","battersFaced","Outs","gamesPitched","gamesStarted","strikes","hitsBatsmen",
+        "inningsPitched","earnedRuns","battersFaced","Outs","gamesPitched","gamesStarted","strikes","hitBatsmen",
         "totalBases","inheritedRunners","inheritedRunnersScored"
     ]
 
     # Your list of player dictionaries
     filtered_player_dicts = [
-        {k: v for k, v in player_dict.items() if k in allowed_keys}
+        {
+            k: convert_ip(v) if k == "inningsPitched" else v
+            for k, v in player_dict.items()
+            if k in allowed_keys
+        }
         for player_dict in pitching_stats
     ]
+
+    pitch_df = pd.DataFrame(filtered_player_dicts)
+
+    team_totals = pitch_df.sum(numeric_only=True)
+    team_stat_dict = team_totals.to_dict()
+
+    team_pitch_dict = {}
+
+    team_pitch_dict["averageAgainst"] = safe_division(team_stat_dict["hits"], team_stat_dict["atBats"])
+    runners_allowed = team_stat_dict["hits"] + team_stat_dict["hitBatsmen"] + team_stat_dict["baseOnBalls"]
+    team_pitch_dict["OBP_against"] = safe_division(runners_allowed, team_stat_dict["battersFaced"])
+    team_pitch_dict["E_totalBasesAgainst"] = team_stat_dict["totalBases"] + team_stat_dict["hitBatsmen"] + team_stat_dict["baseOnBalls"] + team_stat_dict["stolenBases"] - team_stat_dict["caughtStealing"]
+    team_pitch_dict["E_slugging_Against"] = safe_division(team_stat_dict["E_totalBasesAgainst"], team_stat_dict["battersFaced"])
+    team_pitch_dict["E_OPS_Against"] = team_pitch_dict["OBP_against"] + team_pitch_dict["E_slugging_Against"]
+    team_pitch_dict["WHIP"] = safe_division(runners_allowed, team_stat_dict["inningsPitched"])
+    team_pitch_dict["KInning"] = safe_division(team_stat_dict["strikeouts"], team_stat_dict["inningsPitched"])
+    team_pitch_dict["pressureDifferential"] = team_pitch_dict["WHIP"] - team_pitch_dict["KInning"]
+    team_pitch_dict["ERA"] = 9 * safe_division(team_stat_dict["earnedRuns"], team_stat_dict["inningsPitched"])
+    fip_numerator = (13 * team_stat_dict["homeRuns"]) + (3 * (team_stat_dict["baseOnBalls"] + team_stat_dict["hitBatsmen"])) - (2 * team_stat_dict["strikeouts"])
+    team_pitch_dict["FIP"] = safe_division(fip_numerator, team_stat_dict["inningsPitched"]) + 3.2
+    team_pitch_dict["hitters_faced_9"] = 9 * safe_division(team_stat_dict["battersFaced"], team_stat_dict["inningsPitched"])
+    team_pitch_dict["K_9"] = 9 * team_pitch_dict["KInning"]
+    team_pitch_dict["bb_9"] = 9 * safe_division(team_stat_dict["baseOnBalls"], team_stat_dict["inningsPitched"])
+    team_pitch_dict["K_BB"] = safe_division(team_pitch_dict["K_9"], team_pitch_dict["bb_9"])
+    team_pitch_dict["team_hr_9"] = 9 * safe_division(team_stat_dict["homeRuns"], team_stat_dict["inningsPitched"])
+    team_pitch_dict["allowed_iso"] = team_pitch_dict["E_slugging"] - team_pitch_dict["averageAgainst"]
+    team_pitch_dict["contact_outs"] = team_stat_dict["outs"] - team_stat_dict["strikeOuts"]
+    team_pitch_dict["pitches_per_batter"] = safe_division(team_stat_dict["numberOfPitches"], team_stat_dict["battersFaced"])
+    dpi_numerator = team_stat_dict["battersFaced"] - team_stat_dict["strikeOuts"] - team_stat_dict["baseOnBalls"] - team_stat_dict["hitBatsmen"]
+    team_pitch_dict["dpi"] = safe_division(dpi_numerator, team_stat_dict["battersFaced"])
+    team_pitch_dict["reb"] = safe_division(team_stat_dict["runs"], team_stat_dict["battersFaced"])
+    team_pitch_dict["ground_air"] = team_stat_dict["groundOuts"] / team_stat_dict["airOuts"]
+    team_pitch_dict["strand_rate"] = 1- safe_division(team_stat_dict["inheritedRunnersScored"], team_stat_dict["inheritedRunners"])
+
+    return team_pitch_dict
+
 
 def process_batting_stats(batting_stats):
     # resolve player batting stats into team pitching stat list
