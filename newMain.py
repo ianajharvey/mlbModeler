@@ -1,5 +1,8 @@
 import requests
+import addPrefixedMetrics
 import stats_pull
+import pandas as pd
+
 #playerStatsURL = "https://statsapi.mlb.com/api/v1/people/677594/stats?stats=byDateRange&group=hitting&startDate=2025-03-28&endDate=2025-04-07"
 #playerStatsURL_2 = "https://statsapi.mlb.com/api/v1/people/677594/stats?stats=byDateRange&group=hitting&startDate=2025-03-28&endDate=2025-06-26"
 #playerStatsURL_3 = "https://statsapi.mlb.com/api/v1/teams/111/roster?rosterType=active&date=03/27/2025&hydrate=person(stats(group=[hitting],type=season,season=2025))"
@@ -13,7 +16,7 @@ import stats_pull
 #goodURLTeam = "https://statsapi.mlb.com/api/v1/teams/111/stats?group=pitching&season=2025&sportIds=1&stats=byDateRange&startDate=01/01/2025&endDate=06/01/2025"
 
 startDate = "04/27/2025"
-endDate = "04/28/2025"
+endDate = "07/07/2025"
 scheduleURL = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date?date=byDateRange&startDate={startDate}&endDate={endDate}&gameType=R&hydrate=team,probablePitcher"
 
 response = requests.get(scheduleURL)
@@ -23,44 +26,61 @@ schedule_dates = schedule_data["dates"]
 
 games_list = []
 
+i = 0
+
 for schedule_date in schedule_dates:
     baseball_games = schedule_date["games"]
     for baseball_game in baseball_games:
-        game_data = {}
-        date = schedule_date["date"]
-        team_info = baseball_game["teams"]
-        home_team_info = team_info["home"]
+        try:
+            i = i + 1
 
-        game_data["date"] = date
+            game_data = {}
+            date = schedule_date["date"]
 
-        game_data["home_team_name"] = home_team_info["team"]["name"]
-        game_data["home_team_id"] = home_team_info["team"]["id"]
-        game_data["home_team_pitcher_name"] = home_team_info["probablePitcher"]["fullName"]
-        game_data["home_team_pitcher_id"] = home_team_info["probablePitcher"]["id"]
+            team_info = baseball_game["teams"]
+            home_team_info = team_info["home"]
 
-        home_team_pitching, home_team_batting = stats_pull.teamTotalStats(home_team_info["team"]["id"], date)
+            game_data["date"] = date
 
-
-        away_team_info = team_info["away"]
-
-        game_data["away_team_name"] = away_team_info["team"]["name"]
-        game_data["away_team_id"] = away_team_info["team"]["id"]
-        game_data["away_team_pitcher_name"] = away_team_info["probablePitcher"]["fullName"]
-        game_data["away_team_pitcher_id"] = away_team_info["probablePitcher"]["id"]
-
-        game_data["home_team_wins"] = home_team_info["isWinner"]
-
-        games_list.append(game_data)
-
-
-print(home_team_batting)
-print(home_team_pitching)
+            game_data["home_team_name"] = home_team_info["team"]["name"]
+            game_data["home_team_id"] = home_team_info["team"]["id"]
+            game_data["home_team_pitcher_name"] = home_team_info["probablePitcher"]["fullName"]
+            home_pitcher_ID = home_team_info["probablePitcher"]["id"]
+            game_data["home_team_pitcher_id"] = home_pitcher_ID
 
 
 
-#response = requests.get(playerStatsURL)
-#data = response.json()
+            away_team_info = team_info["away"]
+
+            game_data["away_team_name"] = away_team_info["team"]["name"]
+            game_data["away_team_id"] = away_team_info["team"]["id"]
+            game_data["away_team_pitcher_name"] = away_team_info["probablePitcher"]["fullName"]
+            away_pitcher_ID = away_team_info["probablePitcher"]["id"]
+            game_data["away_team_pitcher_id"] = away_pitcher_ID
 
 
-#print(data["stats"][0]["splits"][0]["stat"])
-#print(data2["stats"][0]["splits"][0]["stat"])
+
+            home_team_dict = stats_pull.teamTotalStats(home_team_info["team"]["id"], date)
+            addPrefixedMetrics.add_prefixed_metrics(game_data, home_team_dict, "Home_Team_")
+
+            home_starting_pitcher_dict = stats_pull.starting_pitcher_stats(home_pitcher_ID, date)
+            addPrefixedMetrics.add_prefixed_metrics(game_data, home_starting_pitcher_dict, "Home_Starting_Pitcher_")
+
+            away_team_dict = stats_pull.teamTotalStats(away_team_info["team"]["id"], date)
+            addPrefixedMetrics.add_prefixed_metrics(game_data,away_team_dict,"Away_Team_")
+
+            away_starting_pitcher_dict = stats_pull.starting_pitcher_stats(away_pitcher_ID, date)
+            addPrefixedMetrics.add_prefixed_metrics(game_data, away_starting_pitcher_dict, "Away_Starting_Pitcher_")
+
+            game_data["home_team_wins"] = home_team_info["isWinner"]
+
+            games_list.append(game_data)
+
+            if i % 10 == 0:
+                print(f"processed {i} games")
+
+        except KeyError:
+            continue
+
+df = pd.DataFrame(games_list)
+df.to_csv("trainingSet.csv")
