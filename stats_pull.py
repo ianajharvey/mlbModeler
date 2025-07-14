@@ -24,6 +24,26 @@ def safe_division(numerator, denominator):
 
 
 def starting_pitcher_stats(id, date):
+
+    threshold_ip = 15
+
+    default_starting_pitcher = {"averageAgainst": .245,
+                                "E_totalBasesAgainst": 101,
+                                "E_OPS_Against": .773,
+                                "WHIP": 1.32,
+                                "pressureDifferential": .415,
+                                "ERA": 4.08,
+                                "FIP": 4.25,
+                                "bb_9": 3.05,
+                                "K_BB": 3.07,
+                                "team_hr_9": 1.2,
+                                "allowed_iso": .217,
+                                "contact_outs": 111,
+                                "pitches_per_batter": 3.88,
+                                "dpi": .695,
+                                "ground_air_against": .629,
+                                "strand_rate_against": .973}
+
     starting_pitcher_url = f"https://statsapi.mlb.com/api/v1/people/{id}/stats?stats=byDateRange&group=pitching&startDate=2025-03-27&endDate={date}"
     starting_pitcher_response = requests.get(starting_pitcher_url)
     starting_pitcher_raw_data = starting_pitcher_response.json()
@@ -32,7 +52,19 @@ def starting_pitcher_stats(id, date):
     starting_pitcher_dict = starting_pitcher_raw_data["stats"][0]["splits"][0]["stat"]
     starting_pitcher_list.append(starting_pitcher_dict)
 
+    pitcherInnings = convert_ip(starting_pitcher_dict["inningsPitched"])
+
     starting_pitcher_processed = process_pitching_stats(starting_pitcher_list)
+
+    if pitcherInnings < threshold_ip:
+        weight = min(1.0, pitcherInnings / threshold_ip)
+
+        for key in starting_pitcher_processed:
+            actual = starting_pitcher_processed.get(key,0)
+            default = default_starting_pitcher.get(key, 0)
+            smoothed_stat = (weight * actual) + ((1 - weight) * default)
+
+            starting_pitcher_processed[key] = smoothed_stat
 
     return starting_pitcher_processed
 
@@ -123,27 +155,27 @@ def process_pitching_stats(pitching_stats):
 
     team_pitch_dict["averageAgainst"] = safe_division(team_stat_dict["hits"], team_stat_dict["atBats"])
     runners_allowed = team_stat_dict["hits"] + team_stat_dict["hitBatsmen"] + team_stat_dict["baseOnBalls"]
-    team_pitch_dict["OBP_against"] = safe_division(runners_allowed, team_stat_dict["battersFaced"])
+    OBP_against = safe_division(runners_allowed, team_stat_dict["battersFaced"])
     team_pitch_dict["E_totalBasesAgainst"] = team_stat_dict["totalBases"] + team_stat_dict["hitBatsmen"] + team_stat_dict["baseOnBalls"] + team_stat_dict["stolenBases"] - team_stat_dict["caughtStealing"]
-    team_pitch_dict["E_slugging_Against"] = safe_division(team_pitch_dict["E_totalBasesAgainst"], team_stat_dict["battersFaced"])
-    team_pitch_dict["E_OPS_Against"] = team_pitch_dict["OBP_against"] + team_pitch_dict["E_slugging_Against"]
+    E_slugging_Against = safe_division(team_pitch_dict["E_totalBasesAgainst"], team_stat_dict["battersFaced"])
+    team_pitch_dict["E_OPS_Against"] = OBP_against + E_slugging_Against
     team_pitch_dict["WHIP"] = safe_division(runners_allowed, team_stat_dict["inningsPitched"])
-    team_pitch_dict["KInning"] = safe_division(team_stat_dict["strikeOuts"], team_stat_dict["inningsPitched"])
-    team_pitch_dict["pressureDifferential"] = team_pitch_dict["WHIP"] - team_pitch_dict["KInning"]
+    k_inning = safe_division(team_stat_dict["strikeOuts"], team_stat_dict["inningsPitched"])
+    team_pitch_dict["pressureDifferential"] = team_pitch_dict["WHIP"] - k_inning
     team_pitch_dict["ERA"] = 9 * safe_division(team_stat_dict["earnedRuns"], team_stat_dict["inningsPitched"])
     fip_numerator = (13 * team_stat_dict["homeRuns"]) + (3 * (team_stat_dict["baseOnBalls"] + team_stat_dict["hitBatsmen"])) - (2 * team_stat_dict["strikeOuts"])
     team_pitch_dict["FIP"] = safe_division(fip_numerator, team_stat_dict["inningsPitched"]) + 3.2
-    team_pitch_dict["hitters_faced_9"] = 9 * safe_division(team_stat_dict["battersFaced"], team_stat_dict["inningsPitched"])
-    team_pitch_dict["K_9"] = 9 * team_pitch_dict["KInning"]
+    #team_pitch_dict["hitters_faced_9"] = 9 * safe_division(team_stat_dict["battersFaced"], team_stat_dict["inningsPitched"])
+    K_9 = 9 * k_inning
     team_pitch_dict["bb_9"] = 9 * safe_division(team_stat_dict["baseOnBalls"], team_stat_dict["inningsPitched"])
-    team_pitch_dict["K_BB"] = safe_division(team_pitch_dict["K_9"], team_pitch_dict["bb_9"])
+    team_pitch_dict["K_BB"] = safe_division(K_9, team_pitch_dict["bb_9"])
     team_pitch_dict["team_hr_9"] = 9 * safe_division(team_stat_dict["homeRuns"], team_stat_dict["inningsPitched"])
-    team_pitch_dict["allowed_iso"] = team_pitch_dict["E_slugging_Against"] - team_pitch_dict["averageAgainst"]
+    team_pitch_dict["allowed_iso"] = E_slugging_Against - team_pitch_dict["averageAgainst"]
     team_pitch_dict["contact_outs"] = team_stat_dict["outs"] - team_stat_dict["strikeOuts"]
     team_pitch_dict["pitches_per_batter"] = safe_division(team_stat_dict["numberOfPitches"], team_stat_dict["battersFaced"])
     dpi_numerator = team_stat_dict["battersFaced"] - team_stat_dict["strikeOuts"] - team_stat_dict["baseOnBalls"] - team_stat_dict["hitBatsmen"]
     team_pitch_dict["dpi"] = safe_division(dpi_numerator, team_stat_dict["battersFaced"])
-    team_pitch_dict["reb"] = safe_division(team_stat_dict["runs"], team_stat_dict["battersFaced"])
+    #team_pitch_dict["reb"] = safe_division(team_stat_dict["runs"], team_stat_dict["battersFaced"])
     total_air_outs = team_stat_dict["airOuts"] + team_stat_dict["flyOuts"]
     team_pitch_dict["ground_air_against"] = safe_division(team_stat_dict["groundOuts"], total_air_outs)
     team_pitch_dict["strand_rate_against"] = 1- safe_division(team_stat_dict["inheritedRunnersScored"], team_stat_dict["inheritedRunners"])
@@ -177,17 +209,17 @@ def process_batting_stats(batting_stats):
     obp_numerator = team_stat_dict["hits"] + team_stat_dict["baseOnBalls"] + team_stat_dict["hitByPitch"]
     team_batting_dict["obp"] = safe_division(obp_numerator, team_stat_dict["plateAppearances"])
     team_batting_dict["E_total_bases"] = team_stat_dict["totalBases"] + team_stat_dict["stolenBases"] + team_stat_dict["baseOnBalls"] + team_stat_dict["hitByPitch"] - team_stat_dict["caughtStealing"]
-    team_batting_dict["E_slugging"] = safe_division(team_batting_dict["E_total_bases"], team_stat_dict["plateAppearances"])
-    team_batting_dict["EOPS"] = team_batting_dict["obp"] + team_batting_dict["E_slugging"]
-    team_batting_dict["rbipa"] = safe_division(team_stat_dict["rbi"], team_stat_dict["plateAppearances"])
+    E_slugging = safe_division(team_batting_dict["E_total_bases"], team_stat_dict["plateAppearances"])
+    team_batting_dict["EOPS"] = team_batting_dict["obp"] + E_slugging
+    #team_batting_dict["rbipa"] = safe_division(team_stat_dict["rbi"], team_stat_dict["plateAppearances"])
     team_batting_dict["walkRate"] = safe_division(team_stat_dict["baseOnBalls"], team_stat_dict["plateAppearances"])
     team_batting_dict["kRate"] = safe_division(team_stat_dict["strikeOuts"], team_stat_dict["plateAppearances"])
     team_batting_dict["ktobb"] = safe_division(team_stat_dict["baseOnBalls"], team_stat_dict["strikeOuts"])
-    team_batting_dict["E_iso"] = team_batting_dict["E_slugging"] - team_batting_dict["average"]
+    team_batting_dict["E_iso"] = E_slugging - team_batting_dict["average"]
     team_batting_dict["pitches_seen_per_PA"] = safe_division(team_stat_dict["numberOfPitches"], team_stat_dict["plateAppearances"])
     team_batting_dict["runsPerGame"] = safe_division(team_stat_dict["rbi"], team_stat_dict["gamesPlayed"])
     team_batting_dict["homeRunsPerGame"] = safe_division(team_stat_dict["homeRuns"], team_stat_dict["gamesPlayed"])
     team_batting_dict["babip"] = safe_division(team_stat_dict["hits"] - team_stat_dict["homeRuns"], team_stat_dict["atBats"] - team_stat_dict["strikeOuts"] - team_stat_dict["homeRuns"] + team_stat_dict["sacFlies"])
-    team_batting_dict["atBats_hr"] = safe_division(team_stat_dict["atBats"], team_stat_dict["homeRuns"])
+    #team_batting_dict["atBats_hr"] = safe_division(team_stat_dict["atBats"], team_stat_dict["homeRuns"])
 
     return team_batting_dict
