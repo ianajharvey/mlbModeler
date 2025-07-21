@@ -1,4 +1,3 @@
-import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
@@ -17,7 +16,7 @@ def train_models(df):
     df.drop(columns=df.columns[44], axis=1, inplace=True)
 
     # Assume X and y already defined
-    X_train, X_test, y_train, y_test = train_test_split(df, results, stratify=results, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(df, results, stratify=results, random_state=3)
 
     # Logistic Regression + PCA pipeline
     pipe = Pipeline([
@@ -55,7 +54,7 @@ def train_models(df):
         n_iter=50,
         scoring='accuracy',
         cv=5,
-        random_state=42,
+        random_state=3,
         n_jobs=-1
     )
 
@@ -127,10 +126,3 @@ def train_models(df):
     ensemble_model = grid_voting.best_estimator_
 
     return log_reg_model, xgb_model, rf_model, ensemble_model
-
-
-
-
-
-
-

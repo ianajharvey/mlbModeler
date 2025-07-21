@@ -12,7 +12,7 @@ endDate = yesterday.strftime("%m/%d/%Y")
 
 full_df = trainingSet.gather_data(startDate, endDate)
 
-feature_df = featureExtraction.extract_features(full_df)
+feature_df, meta_data_df = featureExtraction.extract_features(full_df)
 
 log_reg, xgb, rf, ensemble = model_training.train_models(feature_df)
 
