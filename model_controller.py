@@ -1,4 +1,4 @@
-from pipeline import model_training, trainingSet, featureExtraction
+from pipeline import model_training, gatherData, featureExtraction
 from datetime import date, timedelta
 import joblib
 
@@ -10,7 +10,7 @@ yesterday = today - timedelta(days=1)
 
 endDate = yesterday.strftime("%m/%d/%Y")
 
-full_df = trainingSet.gather_data(startDate, endDate)
+full_df = gatherData.gather_data(startDate, endDate, filePath="data/trainingSet.csv")
 
 feature_df, meta_data_df = featureExtraction.extract_features(full_df)
 

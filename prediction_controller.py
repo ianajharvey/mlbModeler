@@ -1,11 +1,13 @@
-from pipeline import trainingSet, featureExtraction
+from pipeline import gatherData, featureExtraction
 from datetime import date
 import joblib
+import pandas as pd
 
 today = date.today()
 today_string = today.strftime("%m/%d/%Y")
+save_today =  today.strftime("%m-%d-%Y")
 
-full_df = trainingSet.gather_data(today_string, today_string)
+full_df = gatherData.gather_data(today_string, today_string, prediction=True)
 
 feature_df, meta_data_df = featureExtraction.extract_features(full_df)
 
@@ -27,3 +29,9 @@ output_df["Log_Reg_Preds"] = log_reg_preds
 output_df["XGB_Preds"] = xgb_preds
 output_df["RF_Preds"] = rf_preds
 output_df["Ensemble_Preds"] = ensemble_preds
+
+#Drop CSV
+output_df.to_csv(f"data/predictions/{save_today}.csv", index=False)
+
+#Replace Master
+output_df.to_csv("data/predictions/prediction_master.csv", index=False)

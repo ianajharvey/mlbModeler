@@ -2,7 +2,7 @@ import requests
 from src import dictionaryProcessing, stats_pull
 import pandas as pd
 
-def gather_data(startDate, endDate, filePath=None):
+def gather_data(startDate, endDate, filePath=None, prediction = False):
 
     scheduleURL = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date?date=byDateRange&startDate={startDate}&endDate={endDate}&gameType=R&hydrate=team,probablePitcher"
 
@@ -53,7 +53,8 @@ def gather_data(startDate, endDate, filePath=None):
                 dictionaryProcessing.add_prefixed_metrics(game_data, team_matchup_dict, "Team_")
                 dictionaryProcessing.add_prefixed_metrics(game_data, pitcher_matchup_dict, "Pitcher_")
 
-                game_data["home_team_wins"] = home_team_info["isWinner"]
+                if not prediction:
+                    game_data["home_team_wins"] = home_team_info["isWinner"]
 
                 games_list.append(game_data)
 

@@ -49,24 +49,30 @@ def starting_pitcher_stats(id, date):
     starting_pitcher_raw_data = starting_pitcher_response.json()
 
     starting_pitcher_list = []
-    starting_pitcher_dict = starting_pitcher_raw_data["stats"][0]["splits"][0]["stat"]
-    starting_pitcher_list.append(starting_pitcher_dict)
+    try:
+        starting_pitcher_dict = starting_pitcher_raw_data["stats"][0]["splits"][0]["stat"]
+        starting_pitcher_list.append(starting_pitcher_dict)
 
-    pitcherInnings = convert_ip(starting_pitcher_dict["inningsPitched"])
+        pitcherInnings = convert_ip(starting_pitcher_dict["inningsPitched"])
 
-    starting_pitcher_processed = process_pitching_stats(starting_pitcher_list)
+        starting_pitcher_processed = process_pitching_stats(starting_pitcher_list)
 
-    if pitcherInnings < threshold_ip:
-        weight = min(1.0, pitcherInnings / threshold_ip)
+        if pitcherInnings < threshold_ip:
+            weight = min(1.0, pitcherInnings / threshold_ip)
 
-        for key in starting_pitcher_processed:
-            actual = starting_pitcher_processed.get(key,0)
-            default = default_starting_pitcher.get(key, 0)
-            smoothed_stat = (weight * actual) + ((1 - weight) * default)
+            for key in starting_pitcher_processed:
+                actual = starting_pitcher_processed.get(key,0)
+                default = default_starting_pitcher.get(key, 0)
+                smoothed_stat = (weight * actual) + ((1 - weight) * default)
 
-            starting_pitcher_processed[key] = smoothed_stat
+                starting_pitcher_processed[key] = smoothed_stat
 
-    return starting_pitcher_processed
+        return starting_pitcher_processed
+
+    except IndexError:
+        return default_starting_pitcher
+
+
 
 
 
